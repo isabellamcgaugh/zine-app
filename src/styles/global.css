@@ -148,6 +148,14 @@ body{
   flex-direction:column;
 }
 
+/* Single child routes fill height between status bar and home indicator */
+.phoneContent > .pageStack{
+  flex:1 1 auto;
+  min-height:0;
+  width:100%;
+  max-width:100%;
+}
+
 .homeIndicator{
   position:absolute;
   left:50%;
@@ -399,8 +407,18 @@ body{
 }
 
 .promptNewBtn{
-  margin-top:8px;
+  margin-top:10px;
   flex-shrink:0;
+}
+
+/* Scrollable middle: camera or text card — keeps “New prompt” below, never over the field */
+.promptMain{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  width:100%;
 }
 
 /* Prompt: fit camera + controls in one viewport; textarea scrolls inside */
@@ -460,8 +478,8 @@ body{
 
 .promptPage .promptTextCard{
   margin-top:8px;
-  flex:1 1 0;
-  min-height:0;
+  flex:1 1 auto;
+  min-height:120px;
   display:flex;
   flex-direction:column;
   padding:10px 12px;
@@ -680,6 +698,20 @@ body{
   margin-top:0;
 }
 
+.libraryPage{
+  min-height:0;
+}
+
+.libraryPage > .grid2.grid2Even{
+  flex:1 1 auto;
+  min-height:0;
+}
+
+.libraryPage .libraryActions{
+  margin-top:auto;
+  flex-shrink:0;
+}
+
 .zTile{
   border-radius:var(--radius-lg);
   background: var(--nm-surface);
@@ -689,10 +721,13 @@ body{
   max-height:100%;
   display:flex;
   flex-direction:column;
-  align-items:center;
-  justify-content:center;
+  align-items:stretch;
+  justify-content:flex-start;
   position:relative;
   box-shadow: var(--nm-raised-sm);
+  padding:40px 10px 34px;
+  gap:6px;
+  box-sizing:border-box;
 }
 
 .zTileSelected{
@@ -708,15 +743,16 @@ body{
 
 .zTileLabel{
   position:absolute;
-  bottom:14px;
+  bottom:8px;
   left:0;
   right:0;
   text-align:center;
   font-weight:800;
-  font-size:13px;
+  font-size:12px;
   letter-spacing:0.06em;
   text-transform:uppercase;
   color:rgba(0,0,0,0.4);
+  z-index:2;
 }
 
 .iconWrap{
@@ -1135,14 +1171,14 @@ body{
 }
 
 .moodGrid{
-  flex:1;
+  flex:1 1 auto;
   min-height:0;
   display:grid;
   grid-template-columns:1fr 1fr;
   grid-template-rows:repeat(4, minmax(68px, 1fr));
   gap:var(--space-2) var(--space-3);
   margin-top:var(--space-1);
-  padding:var(--space-2) var(--space-1) var(--space-2);
+  padding:var(--space-2) max(var(--space-2), 10px) var(--space-2);
   overflow:hidden;
   align-content:stretch;
 }
@@ -1228,8 +1264,9 @@ body{
 }
 
 .moodFooter{
-  margin-top:var(--space-3);
+  margin-top:auto;
   flex-shrink:0;
+  padding-bottom:2px;
 }
 
 .moodContinueCompact{
@@ -1416,10 +1453,10 @@ body{
 
 .zTileKindPill{
   position:absolute;
-  top:10px;
+  top:8px;
   left:50%;
   transform:translateX(-50%);
-  z-index:3;
+  z-index:4;
   font-size:9px;
   font-weight:800;
   letter-spacing:0.1em;
@@ -1432,13 +1469,17 @@ body{
   box-shadow: var(--nm-raised-sm);
 }
 
-/* Library tile: same stacking as export (date → content → prompt footer) */
+/* Library tile preview — flex flow so labels never stack on top of hint text */
 .zTileSheetMini{
-  position:absolute;
-  left:10px;
-  right:10px;
-  top:36px;
-  bottom:40px;
+  position:relative;
+  left:auto;
+  right:auto;
+  top:auto;
+  bottom:auto;
+  flex:1 1 auto;
+  min-height:52px;
+  width:auto;
+  margin:4px 0 0;
   display:flex;
   flex-direction:column;
   gap:4px;
@@ -1550,23 +1591,35 @@ body{
 }
 
 .zTileEmptyHint{
-  position:absolute;
-  left:12px;
-  right:12px;
-  bottom:42px;
+  position:relative;
+  left:auto;
+  right:auto;
+  bottom:auto;
+  margin:4px 8px 0;
+  padding:0 4px;
   text-align:center;
-  font-size:12px;
+  font-size:11px;
   font-weight:750;
-  color: rgba(0,0,0,0.38);
+  line-height:1.35;
+  color: rgba(0,0,0,0.42);
+  flex-shrink:0;
+}
+
+.zTile .iconWrap{
+  align-self:center;
+  margin:8px auto 4px;
 }
 
 .zTileTextEmptyMark{
-  font-size:48px;
+  align-self:center;
+  margin-top:10px;
+  font-size:clamp(28px, 7vw, 42px);
   font-weight:900;
   letter-spacing:-0.04em;
   color: rgba(0,0,0,0.12);
   line-height:1;
   user-select:none;
+  flex-shrink:0;
 }
 
 .exportTextOnlyBlock{
@@ -1601,6 +1654,12 @@ body{
 /* Export & layout */
 .exportPage{
   padding-bottom:4px;
+  min-height:0;
+}
+
+.exportPage .exportBottomActionsLabeled{
+  margin-top:auto;
+  flex-shrink:0;
 }
 
 .exportPage .exportPrintTargetScreen{
@@ -2279,11 +2338,8 @@ body{
     min-height:100dvh;
     min-height:-webkit-fill-available;
     overflow-x:hidden;
-    padding:
-      env(safe-area-inset-top, 0)
-      env(safe-area-inset-right, 0)
-      env(safe-area-inset-bottom, 0)
-      env(safe-area-inset-left, 0);
+    /* Safe area applied inside .phoneInner only — avoids double inset + layout bugs */
+    padding:0;
   }
 
   #root{
@@ -2291,6 +2347,7 @@ body{
     display:flex;
     flex-direction:column;
     min-height:0;
+    min-height:100dvh;
     width:100%;
     max-width:none;
   }
@@ -2302,6 +2359,7 @@ body{
     max-width:none;
     flex:1 1 auto;
     min-height:0;
+    min-height:100dvh;
     height:auto;
     border:0 !important;
     border-radius:0 !important;
@@ -2315,17 +2373,20 @@ body{
     touch-action:manipulation;
   }
 
-  /* .phoneGlow, .statusBar, .homeIndicator: unchanged from base — keep visible */
+  /* Real phone already has a status bar — hide the decorative 9:41 row */
+  .statusBar{
+    display:none !important;
+  }
 
   .phoneInner{
     flex:1;
     min-height:0;
     height:auto;
     padding:
-      max(20px, env(safe-area-inset-top, 0px))
-      max(20px, env(safe-area-inset-right, 0px))
-      max(22px, env(safe-area-inset-bottom, 0px))
-      max(20px, env(safe-area-inset-left, 0px));
+      max(10px, env(safe-area-inset-top, 0px))
+      max(16px, env(safe-area-inset-right, 0px))
+      max(10px, env(safe-area-inset-bottom, 0px))
+      max(16px, env(safe-area-inset-left, 0px));
   }
 
   .phoneContent{
@@ -2364,8 +2425,9 @@ body{
   }
 
   .plusFab{
-    top:max(10px, env(safe-area-inset-top, 0px));
-    right:max(10px, env(safe-area-inset-right, 0px));
+    top:max(12px, env(safe-area-inset-top, 0px));
+    right:max(12px, env(safe-area-inset-right, 0px));
+    z-index:20;
   }
 
   .moodHeader{
@@ -2383,9 +2445,9 @@ body{
   }
 
   .moodGrid{
-    grid-template-rows:repeat(4, minmax(50px, 1fr));
-    gap:6px 8px;
-    padding:2px 2px 0;
+    grid-template-rows:repeat(4, minmax(52px, 1fr));
+    gap:8px 10px;
+    padding:4px 12px 4px;
   }
 
   .moodCard{
@@ -2405,8 +2467,10 @@ body{
     font-size:10px;
   }
 
+  /* Keep margin-top:auto so the grid stretches; use padding for gap above the CTA */
   .moodFooter{
-    margin-top:var(--space-2);
+    margin-top:auto;
+    padding-top:var(--space-2);
   }
 
   .pageStack > .grid2.grid2Even{

@@ -866,7 +866,7 @@ function LibraryPage({ entries, selectedIndex, onSelectTile, onExport, onFlipboo
   const filled = countFilledPages(entries);
 
   return (
-    <div className="pageStack">
+    <div className="pageStack libraryPage">
       <TextNavBar links={MAIN_SECTION_NAV_LINKS} />
       <header className="uiScreenHead">
         <h2 className="uiScreenTitle">My zine</h2>
@@ -1195,6 +1195,7 @@ function NewPromptPage({ entry, pageIndex, pageCount, onChangeEntry, onNewPrompt
           : "This page saves writing only. Switch to Photo for the camera."}
       </p>
 
+      <div className="promptMain">
       {pageMode === "photo" ? (
         <>
           <div className="frame frameCameraWrap" ref={frameContainerRef}>
@@ -1290,6 +1291,7 @@ function NewPromptPage({ entry, pageIndex, pageCount, onChangeEntry, onNewPrompt
           <p className="enterAnswerNote">Shift + Enter adds a new line.</p>
         </div>
       )}
+      </div>
 
       <button
         className="btnCta btnCtaSecondary btnCtaWide promptNewBtn"
