@@ -1,9 +1,45 @@
-const { useEffect, useRef, useState } = React;
+const { useEffect, useLayoutEffect, useRef, useState } = React;
 
 const STORAGE_KEY = "zine-o-matic-entries-v2";
 const LEGACY_STORAGE_KEY = "zine-o-matic-entries-v1";
 const MOOD_STORAGE_KEY = "zine-o-matic-daily-mood-v1";
+const EXPORT_PREFS_KEY = "zine-o-matic-export-prefs-v1";
+/** Same-tab sync (storage event only fires in other tabs). */
+const EXPORT_PREFS_CHANGED_EVENT = "zine-o-matic-export-prefs-changed";
 const TILE_COUNT = 6;
+
+/** Same four links on every screen (hash routes). */
+const MAIN_SECTION_NAV_LINKS = [
+  { href: "#/mood", label: "Mood" },
+  { href: "#/library", label: "Zine" },
+  { href: "#/prompt", label: "Prompt" },
+  { href: "#/flipbook", label: "Flip" },
+];
+
+function loadExportPrefs() {
+  const defaults = { sheetInset: 18, previewFit: "cover" };
+  if (typeof window === "undefined") return defaults;
+  const raw = window.localStorage.getItem(EXPORT_PREFS_KEY);
+  if (!raw) return defaults;
+  try {
+    const o = JSON.parse(raw);
+    return {
+      sheetInset: typeof o.sheetInset === "number" ? o.sheetInset : defaults.sheetInset,
+      previewFit: o.previewFit === "contain" ? "contain" : "cover",
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveExportPrefs(prefs) {
+  window.localStorage.setItem(EXPORT_PREFS_KEY, JSON.stringify(prefs));
+  window.dispatchEvent(
+    new CustomEvent(EXPORT_PREFS_CHANGED_EVENT, {
+      detail: prefs,
+    })
+  );
+}
 
 /** ISO 216 / JIS B sizes at 300 DPI for print-ready PNG exports */
 const EXPORT_DPI = 300;
@@ -26,6 +62,9 @@ const PAPER_FORMATS = [
 function getPaperFormat(id) {
   return PAPER_FORMATS.find((p) => p.id === id) || PAPER_FORMATS[1];
 }
+
+/** Fixed paper for PNG, print, and flipbook (no UI picker). */
+const EXPORT_PAPER = getPaperFormat("a5");
 
 function todayDateKey() {
   const d = new Date();
@@ -375,6 +414,7 @@ function hashRoute() {
   const h = window.location.hash || "";
   if (h.startsWith("#/library")) return "library";
   if (h.startsWith("#/export")) return "export";
+  if (h.startsWith("#/flipbook")) return "flipbook";
   if (h.startsWith("#/mood")) return "mood";
   if (h.startsWith("#/prompt")) return "prompt";
   return "";
@@ -384,9 +424,9 @@ function navigate(to) {
   window.location.hash = to;
 }
 
-function Icons() {
-  const stroke = "rgba(0,0,0,0.62)";
-  const stroke2 = "rgba(0,0,0,0.72)";
+function Icons({ onDark = false } = {}) {
+  const stroke = onDark ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.62)";
+  const stroke2 = onDark ? "rgba(255,255,255,0.96)" : "rgba(0,0,0,0.72)";
 
   function IconSvg({ children, size = 48 }) {
     return (
@@ -513,6 +553,47 @@ function Icons() {
     </IconSvg>
   );
 
+  /** Nav: daily mood */
+  const MoodNavIcon = () => (
+    <IconSvg size={40}>
+      <circle cx="24" cy="24" r="9" stroke={stroke} strokeWidth="2" />
+      <path d="M24 9v5M24 34v5M9 24h5M34 24h5" stroke={stroke2} strokeWidth="2" strokeLinecap="round" />
+    </IconSvg>
+  );
+
+  /** Photo cover (bleed) vs contain */
+  const ImageCoverIcon = () => (
+    <IconSvg size={38}>
+      <rect x="11" y="13" width="26" height="22" rx="2" stroke={stroke} strokeWidth="2" />
+      <path d="M15 31l6-8 5 6 4-5 5 7" stroke={stroke} strokeWidth="2" strokeLinejoin="round" />
+    </IconSvg>
+  );
+
+  const ImageContainIcon = () => (
+    <IconSvg size={38}>
+      <rect x="12" y="14" width="24" height="20" rx="2" stroke={stroke} strokeWidth="2" />
+      <rect x="16" y="18" width="16" height="12" rx="1" stroke={stroke2} strokeWidth="2" strokeDasharray="3 3" />
+    </IconSvg>
+  );
+
+  const ResetSmallIcon = () => (
+    <IconSvg size={34}>
+      <path d="M28 20a10 10 0 10-2 9" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      <path d="M30 16v6h-6" stroke={stroke} strokeWidth="2" strokeLinejoin="round" />
+    </IconSvg>
+  );
+
+  const BookFlipIcon = () => (
+    <IconSvg size={44}>
+      <path
+        d="M14 12h8a5 5 0 015 5v18a2 2 0 00-2-2H14V12zM34 12h-8a5 5 0 00-5 5v18a2 2 0 002-2h8V12z"
+        stroke={stroke}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </IconSvg>
+  );
+
   return {
     PhotoPlaceholder,
     ImageIcon,
@@ -528,6 +609,11 @@ function Icons() {
     DocumentPageIcon,
     DownloadDiskIcon,
     PrinterIcon,
+    MoodNavIcon,
+    ImageCoverIcon,
+    ImageContainIcon,
+    ResetSmallIcon,
+    BookFlipIcon,
   };
 }
 
@@ -562,27 +648,35 @@ function MoodFace({ kind, color }) {
   if (kind === "energized") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
+        {/* Buzz / charge: short rays above the head — not on the eyes */}
         <path
-          d="M36 14l4 10 10 2-8 8 2 10-10-6-10 6 2-10-8-8 10-2z"
-          fill={`${color}35`}
+          d="M36 9v6M26 12l5 5M46 12l-5 5M22 20l6 2M50 20l-6 2"
+          fill="none"
           stroke={color}
-          strokeWidth={sw}
-          strokeLinejoin="round"
+          strokeWidth={sw * 0.9}
+          strokeLinecap="round"
+          opacity="0.9"
         />
-        <circle cx="36" cy="42" r="20" {...face} fill={`${color}28`} />
-        <path d="M28 40l4-4 4 4M36 40l4-4 4 4" {...line} />
-        <path d="M28 50h16" {...line} />
+        <circle cx="36" cy="42" r="23" {...face} />
+        {/* Alert, awake eyes */}
+        <circle cx="27" cy="40" r="4" fill={color} stroke="none" />
+        <circle cx="45" cy="40" r="4" fill={color} stroke="none" />
+        <path d="M22 32c4-3 10-2 12 2M40 32c4-3 10-2 12 2" {...line} strokeWidth={sw * 0.95} />
+        {/* Big engaged smile */}
+        <path d="M24 50c4 9 20 9 24 0" {...line} />
       </svg>
     );
   }
   if (kind === "creative") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        <circle cx="36" cy="40" r="24" {...face} />
-        <path d="M30 22l4 8 8-6-2 10 10 2-10 4" fill="none" stroke={color} strokeWidth={sw * 0.85} strokeLinejoin="round" />
-        <circle cx="28" cy="38" r="3" fill={color} stroke="none" />
-        <path d="M40 35l6 3-6 3 2-3z" fill={color} stroke="none" />
-        <path d="M26 50c5 4 15 4 20 0" {...line} />
+        {/* Lightbulb + face: bulb stack ends ~y31, face starts y30 — readable “idea” metaphor */}
+        <ellipse cx="36" cy="17" rx="13" ry="12" fill={`${color}26`} stroke={color} strokeWidth={sw * 0.85} />
+        <rect x="31" y="27" width="10" height="5" rx="1.5" fill={`${color}30`} stroke={color} strokeWidth={sw * 0.75} />
+        <circle cx="36" cy="51" r="19" {...face} />
+        <circle cx="28.5" cy="50" r="3" fill={color} stroke="none" />
+        <circle cx="43.5" cy="50" r="3" fill={color} stroke="none" />
+        <path d="M28 59c4 4 12 4 16 0" {...line} />
       </svg>
     );
   }
@@ -633,26 +727,22 @@ function MoodFace({ kind, color }) {
   if (kind === "growth") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        <ellipse cx="36" cy="48" rx="20" ry="14" fill={`${color}25`} stroke={color} strokeWidth={sw} />
-        <path d="M36 46V26" stroke={color} strokeWidth={sw} strokeLinecap="round" fill="none" />
+        {/* Soil / base */}
+        <ellipse cx="36" cy="54" rx="18" ry="10" fill={`${color}22`} stroke={color} strokeWidth={sw * 0.9} />
+        {/* Stem */}
+        <path d="M36 48V28" stroke={color} strokeWidth={sw} strokeLinecap="round" fill="none" />
+        {/* Two leaves at top — young plant */}
         <path
-          d="M36 30c-12-2-18 8-10 16 4-8 10-12 10-12z"
-          fill={color}
+          d="M36 30c-10 2-14 12-6 18 2-6 4-10 6-12M36 30c10 2 14 12 6 18-2-6-4-10-6-12"
+          fill="none"
           stroke={color}
-          strokeWidth={1.2}
+          strokeWidth={sw * 0.9}
+          strokeLinecap="round"
           strokeLinejoin="round"
-          opacity="0.88"
         />
-        <path
-          d="M36 28c12-4 20 4 12 14-6-6-12-6-12-6z"
-          fill={color}
-          stroke={color}
-          strokeWidth={1.2}
-          strokeLinejoin="round"
-          opacity="0.72"
-        />
-        <circle cx="32" cy="44" r="2.2" fill={color} stroke="none" opacity="0.5" />
-        <circle cx="40" cy="44" r="2.2" fill={color} stroke="none" opacity="0.5" />
+        <circle cx="29" cy="48" r="2.5" fill={color} stroke="none" opacity="0.65" />
+        <circle cx="43" cy="48" r="2.5" fill={color} stroke="none" opacity="0.65" />
+        <path d="M29 54c4 3 10 3 14 0" {...line} strokeWidth={sw * 0.85} />
       </svg>
     );
   }
@@ -680,11 +770,41 @@ function NmNavPill({ href, title, subtitle }) {
   );
 }
 
+function NmNavIcon({ href, label, children }) {
+  return (
+    <a className="nmNavIcon" href={href} aria-label={label} title={label}>
+      {children}
+    </a>
+  );
+}
+
+function TextNavBar({ links }) {
+  const [hash, setHash] = useState(() => window.location.hash || "");
+  useEffect(() => {
+    const fn = () => setHash(window.location.hash || "");
+    window.addEventListener("hashchange", fn);
+    return () => window.removeEventListener("hashchange", fn);
+  }, []);
+  return (
+    <nav className="textNavBar" aria-label="Sections">
+      {links.map(({ href, label }) => {
+        const isActive = hash === href || (href.length > 2 && hash.startsWith(href));
+        return (
+          <a key={href} href={href} className={"textNavLink" + (isActive ? " textNavLinkActive" : "")}>
+            {label}
+          </a>
+        );
+      })}
+    </nav>
+  );
+}
+
 function MoodPage({ savedMoodId, onPickMood, onContinue }) {
   return (
     <div className="pageStack moodPage">
+      <TextNavBar links={MAIN_SECTION_NAV_LINKS} />
       <header className="moodHeader">
-        <p className="moodKicker">Good morning</p>
+        <p className="moodKicker">{timeBasedGreeting()}</p>
         <h1 className="moodTitle">How&apos;s your mood today?</h1>
         <p className="moodSubtitle">Tap one — the whole app will glow in that vibe until tomorrow.</p>
       </header>
@@ -712,13 +832,11 @@ function MoodPage({ savedMoodId, onPickMood, onContinue }) {
 
       {savedMoodId ? (
         <div className="moodFooter">
-          <button type="button" className="moodContinueBtn" onClick={onContinue}>
+          <button type="button" className="btnCta btnCtaWide moodContinueCompact" onClick={onContinue}>
             Continue to zine
           </button>
         </div>
       ) : null}
-
-      <div className="spacerGrow" />
     </div>
   );
 }
@@ -743,18 +861,18 @@ function PhoneShell({ children }) {
   );
 }
 
-function LibraryPage({ entries, selectedIndex, onSelectTile, onEdit, onExport }) {
-  const { PhotoPlaceholder } = Icons();
+function LibraryPage({ entries, selectedIndex, onSelectTile, onExport, onFlipbook }) {
+  const { PhotoPlaceholder, ExportIcon, BookFlipIcon } = Icons({ onDark: true });
+  const filled = countFilledPages(entries);
 
   return (
     <div className="pageStack">
-      <NmNavRow>
-        <NmNavPill href="#/mood" title="Mood" subtitle="Today" />
-        <NmNavPill href="#/prompt" title="Prompt" subtitle="Camera & text" />
-      </NmNavRow>
+      <TextNavBar links={MAIN_SECTION_NAV_LINKS} />
       <header className="uiScreenHead">
         <h2 className="uiScreenTitle">My zine</h2>
-        <p className="uiScreenMeta">Pages · tap to select, then edit or export</p>
+        <p className="uiScreenMeta">
+          {filled} of {entries.length} pages have content. Tap a tile to select it.
+        </p>
       </header>
       <div className="grid2 grid2Even">
         {entries.map((e, idx) => {
@@ -762,6 +880,8 @@ function LibraryPage({ entries, selectedIndex, onSelectTile, onEdit, onExport })
           const isText = e.pageMode === "text";
           const hasPhoto = isPhoto && e.photoDataUrl;
           const hasText = isText && e.sentence.trim();
+          const promptMeta = PROMPTS[clampPromptIndex(e.promptIndex)];
+          const dateLine = (e.zineDate && e.zineDate.trim()) || formatDefaultZineDate();
           return (
             <div
               key={e.id}
@@ -780,13 +900,21 @@ function LibraryPage({ entries, selectedIndex, onSelectTile, onEdit, onExport })
               ) : null}
               {isText && !hasText ? <div className="zTileTextEmptyMark">Aa</div> : null}
               {hasPhoto ? (
-                <div className="framePreview" style={{ padding: 16 }}>
-                  <img src={e.photoDataUrl} alt={`pg ${idx + 1}`} />
+                <div className="zTileSheetMini" aria-hidden>
+                  <p className="zTileSheetMiniDate">{dateLine}</p>
+                  <div className="zTileSheetMiniPhoto">
+                    <img src={e.photoDataUrl} alt="" />
+                  </div>
+                  <p className="zTileSheetMiniPrompt">{promptMeta.title}</p>
                 </div>
               ) : null}
               {hasText ? (
-                <div className="zTileTextPreview" title={e.sentence}>
-                  {e.sentence.trim()}
+                <div className="zTileSheetMini zTileSheetMini--text" aria-hidden>
+                  <p className="zTileSheetMiniDate">{dateLine}</p>
+                  <div className="zTileSheetMiniTextBlock">
+                    <div className="zTileSheetMiniTitle">{promptMeta.title}</div>
+                    <div className="zTileSheetMiniBody">{e.sentence.trim()}</div>
+                  </div>
                 </div>
               ) : null}
               {!hasPhoto && !hasText && isText ? (
@@ -801,25 +929,21 @@ function LibraryPage({ entries, selectedIndex, onSelectTile, onEdit, onExport })
         })}
       </div>
 
-      <div className="spacerGrow" />
-
-      <div className="bottomBar">
-        <button className="bottomBtn" onClick={onEdit} type="button">
-          <span style={{ transform: "translateY(-1px)" }}>
-            {(() => {
-              const { PencilIcon } = Icons();
-              return <PencilIcon />;
-            })()}
-          </span>
-          <span>Edit</span>
-        </button>
-        <button className="bottomBtn" onClick={onExport} type="button">
-          {(() => {
-            const { ExportIcon } = Icons();
-            return <span style={{ transform: "translateY(-1px)" }}><ExportIcon /></span>;
-          })()}
-          <span>Export</span>
-        </button>
+      <div className="libraryActions">
+        <div className="libraryActionsRow">
+          <button className="btnCta libraryActionHalf" onClick={onExport} type="button">
+            <span className="btnCtaIcon" aria-hidden>
+              <ExportIcon />
+            </span>
+            <span>Export</span>
+          </button>
+          <button className="btnCta libraryActionHalf" onClick={onFlipbook} type="button">
+            <span className="btnCtaIcon" aria-hidden>
+              <BookFlipIcon />
+            </span>
+            <span>Flip</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -874,11 +998,19 @@ function useCameraStream(active) {
   return { stream, error };
 }
 
-function NewPromptPage({ entry, onChangeEntry, onNewPrompt }) {
+function NewPromptPage({ entry, pageIndex, pageCount, onChangeEntry, onNewPrompt }) {
   const promptMeta = PROMPTS[clampPromptIndex(entry.promptIndex)];
   const pageMode = entry.pageMode === "photo" ? "photo" : "text";
 
-  const { ImageIcon, CameraIcon, ExpandFullscreenIcon, PhotoPlaceholder, RefreshIcon, PlusCircleIcon } = Icons();
+  const {
+    ImageIcon,
+    CameraIcon,
+    ExpandFullscreenIcon,
+    PhotoPlaceholder,
+    RefreshIcon,
+    PlusCircleIcon,
+    GridLibraryIcon,
+  } = Icons();
   const photoInputRef = useRef(null);
   const videoRef = useRef(null);
   const frameContainerRef = useRef(null);
@@ -1022,41 +1154,50 @@ function NewPromptPage({ entry, onChangeEntry, onNewPrompt }) {
   }, []);
 
   return (
-    <div className="pageStack">
+    <div className="pageStack promptPage">
+      <TextNavBar links={MAIN_SECTION_NAV_LINKS} />
       <div className="plusFab" onClick={() => onNewPrompt({ resetEntry: true })} role="button" tabIndex={0} title="New entry">
         <PlusCircleIcon />
       </div>
 
-      <div className="chipTitle" style={{ marginTop: 8 }}>
-        {promptMeta.title}
-      </div>
+      <div className="chipTitle promptChipTitle">{promptMeta.title}</div>
+      <p className="promptPageMeta">
+        Page {typeof pageIndex === "number" ? pageIndex + 1 : 1}
+        {typeof pageCount === "number" ? ` of ${pageCount}` : ""}
+      </p>
 
       <div className="promptModeRow" role="group" aria-label="Page type">
         <button
           type="button"
-          className={"promptModeBtn" + (pageMode === "photo" ? " promptModeBtnOn" : "")}
+          className={"promptModeBtn promptModeBtnLabeled" + (pageMode === "photo" ? " promptModeBtnOn" : "")}
           onClick={() => setPromptPageMode("photo")}
         >
-          Photo page
+          <span className="promptModeBtnIconWrap" aria-hidden>
+            <CameraIcon />
+          </span>
+          <span>Photo</span>
         </button>
         <button
           type="button"
-          className={"promptModeBtn" + (pageMode === "text" ? " promptModeBtnOn" : "")}
+          className={"promptModeBtn promptModeBtnLabeled" + (pageMode === "text" ? " promptModeBtnOn" : "")}
           onClick={() => setPromptPageMode("text")}
         >
-          Text answer
+          <span className="promptModeBtnIconWrap" aria-hidden>
+            <span className="promptModeAa">Aa</span>
+          </span>
+          <span>Text</span>
         </button>
       </div>
 
       <p className="promptModeHint">
         {pageMode === "photo"
-          ? "This page is image-only. Switch to Text answer to type instead."
-          : "This page is text-only. Switch to Photo page to use the camera or library instead."}
+          ? "This page saves an image only. Switch to Text to write instead."
+          : "This page saves writing only. Switch to Photo for the camera."}
       </p>
 
       {pageMode === "photo" ? (
         <>
-          <div className="frame frameCameraWrap" ref={frameContainerRef} style={{ marginTop: 10 }}>
+          <div className="frame frameCameraWrap" ref={frameContainerRef}>
             <div className="frameGrid frameOverlay">
               <div className="frameCorner tl" />
               <div className="frameCorner tr" />
@@ -1126,7 +1267,7 @@ function NewPromptPage({ entry, onChangeEntry, onNewPrompt }) {
           />
         </>
       ) : (
-        <div className="textCard" style={{ marginTop: 12 }}>
+        <div className="textCard promptTextCard">
           <div className="textCardHeader">
             <span className="saveHint" aria-live="polite">
               {savedFlash ? "Saved" : " "}
@@ -1141,17 +1282,17 @@ function NewPromptPage({ entry, onChangeEntry, onNewPrompt }) {
             onBlur={() => flashSaved()}
             onKeyDown={handleTextKeyDown}
             spellCheck="true"
-            rows={6}
+            rows={4}
           />
-          <button type="button" className="enterAnswerBtn" onClick={commitTextAnswer}>
-            Enter
+          <button type="button" className="btnCta btnCtaWide enterAnswerBtn" onClick={commitTextAnswer}>
+            Save answer
           </button>
-          <p className="enterAnswerNote">Enter saves this answer. Use Shift+Enter for a new line.</p>
+          <p className="enterAnswerNote">Shift + Enter adds a new line.</p>
         </div>
       )}
 
       <button
-        className="pillBtn"
+        className="btnCta btnCtaSecondary btnCtaWide promptNewBtn"
         type="button"
         onClick={() => {
           onNewPrompt({
@@ -1161,23 +1302,13 @@ function NewPromptPage({ entry, onChangeEntry, onNewPrompt }) {
           });
           setTimeout(flashSaved, 0);
         }}
-        aria-label="New prompt"
       >
-        <span style={{ transform: "translateY(-1px)" }}>
+        <span className="btnCtaIcon" aria-hidden>
           <RefreshIcon />
         </span>
-        <span>NEW PROMPT</span>
-        <span style={{ transform: "translateY(-1px) rotate(180deg)" }}>
-          <RefreshIcon />
-        </span>
+        <span>New prompt</span>
       </button>
 
-      <div className="spacerGrow" />
-      <NmNavRow className="nmNavRowBottom">
-        <NmNavPill href="#/mood" title="Mood" subtitle="Change today" />
-        <NmNavPill href="#/library" title="My zine" subtitle="All pages" />
-      </NmNavRow>
-      <div style={{ height: 10 }} />
     </div>
   );
 }
@@ -1372,8 +1503,190 @@ function triggerDownloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+/**
+ * Sheet interior shared by export preview, PNG, print, and flipbook — date, photo or text, photo footer.
+ */
+function ZineSheetInnerBlocks({ entry, previewFit }) {
+  const promptMeta = PROMPTS[clampPromptIndex(entry.promptIndex)];
+  const isPhoto = entry.pageMode === "photo";
+  const textBody = (entry.sentence || "").trim();
+  const hasPhoto = isPhoto && entry.photoDataUrl;
+  const dateLine = (entry.zineDate && entry.zineDate.trim()) || formatDefaultZineDate();
+  const fit = previewFit === "contain" ? "contain" : "cover";
+
+  return (
+    <>
+      <div className="zinePaperFibers" aria-hidden />
+      <div className="zinePaperDate exportDateStaticWrap">
+        <p className="exportDateStatic">{dateLine}</p>
+      </div>
+      {isPhoto ? (
+        <div className={"exportPhotoSlot zinePaperPhoto" + (hasPhoto ? "" : " exportPhotoSlotBlank")}>
+          {hasPhoto ? (
+            <img src={entry.photoDataUrl} alt="" className="exportPhotoImg" style={{ objectFit: fit }} />
+          ) : null}
+        </div>
+      ) : (
+        <div className="exportTextOnlyBlock zinePaperTextBlock">
+          {textBody ? (
+            <>
+              <div className="exportCaptionTitle">{promptMeta.title}</div>
+              <div className="exportCaptionBodyReadonly">{entry.sentence}</div>
+            </>
+          ) : (
+            <div className="exportPageBodyBlank" aria-hidden />
+          )}
+        </div>
+      )}
+      {isPhoto && hasPhoto ? <div className="zinePaperFooterTitle">{promptMeta.title}</div> : null}
+    </>
+  );
+}
+
+/**
+ * One physical page inside StPageFlip (see https://github.com/Nodlik/StPageFlip ).
+ * DearFlip (js.dearflip.com) and Turn.js are commercial / jQuery-heavy; this build uses PageFlip instead.
+ */
+function ZineFlipPageContent({ entry, previewFit, sheetInset }) {
+  const inset = typeof sheetInset === "number" ? sheetInset : 18;
+  const fit = previewFit === "contain" ? "contain" : "cover";
+  return (
+    <div className="zineFlipPaper">
+      <div className="zinePaperSheetInner" style={{ padding: inset }}>
+        <ZineSheetInnerBlocks entry={entry} previewFit={fit} />
+      </div>
+    </div>
+  );
+}
+
+function countFilledPages(entries) {
+  return entries.reduce((n, e) => {
+    const photo = e.pageMode === "photo" && e.photoDataUrl;
+    const text = e.pageMode === "text" && (e.sentence || "").trim();
+    return n + (photo || text ? 1 : 0);
+  }, 0);
+}
+
+function timeBasedGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function FlipbookPage({ entries }) {
+  const shellRef = useRef(null);
+  const bookRef = useRef(null);
+  const [prefsRevision, setPrefsRevision] = useState(0);
+
+  useEffect(() => {
+    const bumpPrefs = () => setPrefsRevision((n) => n + 1);
+    const onStorage = (e) => {
+      if (e.key === EXPORT_PREFS_KEY || e.key === null) bumpPrefs();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(EXPORT_PREFS_CHANGED_EVENT, bumpPrefs);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(EXPORT_PREFS_CHANGED_EVENT, bumpPrefs);
+    };
+  }, []);
+
+  const prefs = loadExportPrefs();
+  const previewFit = prefs.previewFit;
+  const sheetInset = prefs.sheetInset;
+  const paper = EXPORT_PAPER;
+  const flipDigest = [
+    prefsRevision,
+    previewFit,
+    sheetInset,
+    ...entries.map((e) => {
+      const ph = e.photoDataUrl || "";
+      return `${e.pageMode}|${e.promptIndex}|${e.sentence || ""}|${ph.length}:${ph.slice(0, 48)}:${ph.slice(-48)}`;
+    }),
+  ].join("¦");
+
+  useLayoutEffect(() => {
+    const bookEl = bookRef.current;
+    const shellEl = shellRef.current;
+    const St = typeof window !== "undefined" ? window.St : null;
+    if (!bookEl || !shellEl || !St || !St.PageFlip) return;
+
+    const pages = bookEl.querySelectorAll(".zineFlipSheet");
+    if (!pages.length) return;
+
+    const { width: shellW } = shellEl.getBoundingClientRect();
+    const w = Math.max(200, Math.min(Math.floor(shellW - 8), 360));
+    const h = Math.max(260, Math.round((w * paper.hMm) / paper.wMm));
+
+    const pf = new St.PageFlip(bookEl, {
+      width: w,
+      height: h,
+      maxShadowOpacity: 0.4,
+      showCover: false,
+      mobileScrollSupport: true,
+      usePortrait: true,
+      drawShadow: true,
+      flippingTime: 650,
+      autoSize: true,
+    });
+
+    const load = pf.loadFromHTML || pf.loadFromHtml;
+    load.call(pf, pages);
+
+    return () => {
+      try {
+        pf.destroy();
+      } catch (e) {
+        /* ignore */
+      }
+    };
+  }, [flipDigest]);
+
+  const missingLib = typeof window !== "undefined" && (!window.St || !window.St.PageFlip);
+
+  return (
+    <div className="pageStack flipbookPage flipbookPage--immersive">
+      <TextNavBar links={MAIN_SECTION_NAV_LINKS} />
+      <div ref={shellRef} className="zineFlipShell">
+        {missingLib ? (
+          <p className="zineFlipShellHint">
+            Page-flip library did not load (blocked script or offline). Check the network tab and refresh.
+          </p>
+        ) : null}
+        <div ref={bookRef} className="zineFlipBookRoot" key={flipDigest}>
+          {entries.map((e, idx) => (
+            <div className="zineFlipSheet" key={idx}>
+              <ZineFlipPageContent entry={e} previewFit={previewFit} sheetInset={sheetInset} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** One export/print sheet — reused for on-screen preview, PNG, and full-zine print. */
+function ExportZineSheetBlock({ entry, paper, sheetInset, previewFit, wrapperClassName }) {
+  return (
+    <div className={wrapperClassName || "zinePaperStage"}>
+      <div
+        className="zinePaperSheet"
+        style={{
+          aspectRatio: `${paper.wMm} / ${paper.hMm}`,
+        }}
+      >
+        <div className="zinePaperSheetInner" style={{ padding: sheetInset }}>
+          <ZineSheetInnerBlocks entry={entry} previewFit={previewFit} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
-  const { GridLibraryIcon, DownloadDiskIcon, PrinterIcon } = Icons();
+  const initial = loadExportPrefs();
+  const { ChevronLeftIcon, ChevronRightIcon, ImageCoverIcon, ImageContainIcon, ResetSmallIcon } = Icons();
 
   const pageCount = entries.length;
   const entry = entries[selectedIndex] || entries[0];
@@ -1383,18 +1696,21 @@ function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
     if (!canStepPage) return;
     onSelectIndex((selectedIndex + delta + pageCount) % pageCount);
   }
-  const promptMeta = PROMPTS[clampPromptIndex(entry.promptIndex)];
   const isPhoto = entry.pageMode === "photo";
   const isText = entry.pageMode === "text";
   const textBody = (entry.sentence || "").trim();
   const hasPhoto = Boolean(entry.photoDataUrl);
+  const promptMeta = PROMPTS[clampPromptIndex(entry.promptIndex)];
 
-  const [paperId, setPaperId] = useState("a5");
-  const [sheetInset, setSheetInset] = useState(18);
-  const [previewFit, setPreviewFit] = useState("cover");
+  const [sheetInset, setSheetInset] = useState(initial.sheetInset);
+  const [previewFit, setPreviewFit] = useState(initial.previewFit);
 
-  const paper = getPaperFormat(paperId);
+  const paper = EXPORT_PAPER;
   const dateLine = (entry.zineDate && entry.zineDate.trim()) || formatDefaultZineDate();
+
+  useEffect(() => {
+    saveExportPrefs({ sheetInset, previewFit });
+  }, [sheetInset, previewFit]);
 
   async function handleDownloadPng() {
     const blob = await renderZinePageToBlob({
@@ -1417,106 +1733,75 @@ function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
 
   return (
     <div className="pageStack exportPage">
-      <NmNavRow className="nmNavRowDense exportTopLinks">
-        <NmNavPill href="#/mood" title="Mood" subtitle="Theme" />
-        <NmNavPill href="#/library" title="Zine" subtitle="Grid" />
-        <NmNavPill href="#/prompt" title="Prompt" subtitle="Edit" />
-      </NmNavRow>
+      <TextNavBar links={MAIN_SECTION_NAV_LINKS} />
 
       <header className="uiScreenHead uiScreenHeadTight">
-        <h2 className="uiScreenTitle">Print zine</h2>
+        <h2 className="uiScreenTitle">Print &amp; export</h2>
+        <p className="uiScreenMeta exportHeadMeta">
+          Adjust margins and photo fit. PNG matches the preview below; <strong>Print</strong> outputs the full zine (A5).
+        </p>
       </header>
 
       {pageCount > 0 ? (
         <div
           className="exportPgBar"
           role="navigation"
-          aria-label={`Page ${selectedIndex + 1} of ${pageCount}`}
+          aria-label={`PNG page ${selectedIndex + 1} of ${pageCount}`}
         >
           <button
             type="button"
-            className="exportPgStepBtn"
+            className="exportPgStepBtn exportPgStepBtnIcon"
             onClick={() => bumpPage(-1)}
             disabled={!canStepPage}
-            aria-label="Previous page"
+            aria-label="Previous page for PNG"
           >
-            ‹
+            <ChevronLeftIcon />
           </button>
           <span className="exportPgLabel">
-            {selectedIndex + 1} / {pageCount}
+            Page {selectedIndex + 1} of {pageCount}
           </span>
           <button
             type="button"
-            className="exportPgStepBtn"
+            className="exportPgStepBtn exportPgStepBtnIcon"
             onClick={() => bumpPage(1)}
             disabled={!canStepPage}
-            aria-label="Next page"
+            aria-label="Next page for PNG"
           >
-            ›
+            <ChevronRightIcon />
           </button>
         </div>
       ) : null}
 
-      <div className="exportPaperPicker" role="group" aria-label="Paper size">
-        {PAPER_FORMATS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={"exportPaperBtn" + (paperId === p.id ? " exportPaperBtnOn" : "")}
-            onClick={() => setPaperId(p.id)}
-          >
-            <span className="exportPaperBtnLabel">{p.label}</span>
-            <span className="exportPaperBtnSub">{p.sub}</span>
-          </button>
+      <ExportZineSheetBlock
+        entry={entry}
+        paper={paper}
+        sheetInset={sheetInset}
+        previewFit={previewFit}
+        wrapperClassName="zinePaperStage exportPrintTarget exportPrintTargetScreen"
+      />
+
+      <div className="exportPrintAllSheets" aria-hidden="true">
+        {entries.map((e, i) => (
+          <ExportZineSheetBlock
+            key={e.id ?? i}
+            entry={e}
+            paper={paper}
+            sheetInset={sheetInset}
+            previewFit={previewFit}
+            wrapperClassName="zinePaperStage exportPrintStackItem"
+          />
         ))}
       </div>
 
-      <div className="zinePaperStage">
-        <div
-          className="zinePaperSheet"
-          style={{
-            aspectRatio: `${paper.wMm} / ${paper.hMm}`,
-          }}
-        >
-          <div className="zinePaperSheetInner" style={{ padding: sheetInset }}>
-            <div className="zinePaperFibers" aria-hidden />
-            <div className="zinePaperDate exportDateStaticWrap">
-              <p className="exportDateStatic">{dateLine}</p>
-            </div>
-            {isPhoto ? (
-              <div className={"exportPhotoSlot zinePaperPhoto" + (hasPhoto ? "" : " exportPhotoSlotBlank")}>
-                {hasPhoto ? (
-                  <img
-                    src={entry.photoDataUrl}
-                    alt=""
-                    className="exportPhotoImg"
-                    style={{ objectFit: previewFit }}
-                  />
-                ) : null}
-              </div>
-            ) : (
-              <div className="exportTextOnlyBlock zinePaperTextBlock">
-                {textBody ? (
-                  <>
-                    <div className="exportCaptionTitle">{promptMeta.title}</div>
-                    <div className="exportCaptionBodyReadonly">{entry.sentence}</div>
-                  </>
-                ) : (
-                  <div className="exportPageBodyBlank" aria-hidden />
-                )}
-              </div>
-            )}
-            {isPhoto && hasPhoto ? <div className="zinePaperFooterTitle">{promptMeta.title}</div> : null}
-          </div>
-        </div>
-      </div>
-
-      <div className="exportDimRow">
-        <span className="exportDimLabel">Print margin</span>
+      <div className="exportDimRow exportDimRowCompact">
+        <span className="exportDimIcon" aria-hidden title="Margin">
+          <span className="exportDimGlyph">▥</span>
+        </span>
         <button
           type="button"
           className="exportDimBtn"
           onClick={() => setSheetInset((v) => Math.max(10, v - 2))}
+          aria-label="Smaller margin"
         >
           −
         </button>
@@ -1533,48 +1818,71 @@ function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
           type="button"
           className="exportDimBtn"
           onClick={() => setSheetInset((v) => Math.min(30, v + 2))}
+          aria-label="Larger margin"
         >
           +
         </button>
-      </div>
-
-      <div className="exportToolRow">
-        {isPhoto ? (
-          <>
-            <button
-              type="button"
-              className={"exportChipBtn" + (previewFit === "cover" ? " exportChipBtnOn" : "")}
-              onClick={() => setPreviewFit("cover")}
-            >
-              Bleed fill
-            </button>
-            <button
-              type="button"
-              className={"exportChipBtn" + (previewFit === "contain" ? " exportChipBtnOn" : "")}
-              onClick={() => setPreviewFit("contain")}
-            >
-              Full photo
-            </button>
-          </>
-        ) : null}
-        <button type="button" className="exportChipBtn" onClick={() => setSheetInset(18)}>
-          Reset margin
+        <button
+          type="button"
+          className="exportIconGhostBtn"
+          onClick={() => setSheetInset(18)}
+          aria-label="Reset margin"
+          title="Reset margin"
+        >
+          <ResetSmallIcon />
         </button>
       </div>
 
-      <div className="exportBottomActions">
-        <button type="button" className="exportRoundBtn" onClick={onGoLibrary} aria-label="Library">
-          <GridLibraryIcon />
-        </button>
-        <button type="button" className="exportRoundBtn" onClick={handleDownloadPng} aria-label="Download PNG">
-          <DownloadDiskIcon />
-        </button>
-        <button type="button" className="exportRoundBtn" onClick={handlePrint} aria-label="Print">
-          <PrinterIcon />
-        </button>
-      </div>
+      {isPhoto ? (
+        <div className="exportToolRow exportToolRowIcons" role="group" aria-label="Photo fit for PNG">
+          <button
+            type="button"
+            className={"exportIconToggle" + (previewFit === "cover" ? " exportIconToggleOn" : "")}
+            onClick={() => setPreviewFit("cover")}
+            aria-label="Bleed fill"
+            title="Bleed fill"
+          >
+            <ImageCoverIcon />
+          </button>
+          <button
+            type="button"
+            className={"exportIconToggle" + (previewFit === "contain" ? " exportIconToggleOn" : "")}
+            onClick={() => setPreviewFit("contain")}
+            aria-label="Letterbox"
+            title="Letterbox"
+          >
+            <ImageContainIcon />
+          </button>
+        </div>
+      ) : null}
 
-      <div className="spacerGrow" />
+      <div className="exportBottomActions exportBottomActionsLabeled">
+        {(() => {
+          const { GridLibraryIcon: Gl, DownloadDiskIcon: Dl, PrinterIcon: Pr } = Icons({ onDark: true });
+          return (
+            <>
+              <button type="button" className="btnCta exportActionThird" onClick={onGoLibrary}>
+                <span className="btnCtaIcon" aria-hidden>
+                  <Gl />
+                </span>
+                <span>Zine</span>
+              </button>
+              <button type="button" className="btnCta exportActionThird" onClick={handleDownloadPng}>
+                <span className="btnCtaIcon" aria-hidden>
+                  <Dl />
+                </span>
+                <span>PNG</span>
+              </button>
+              <button type="button" className="btnCta exportActionThird" onClick={handlePrint}>
+                <span className="btnCtaIcon" aria-hidden>
+                  <Pr />
+                </span>
+                <span>Print</span>
+              </button>
+            </>
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -1627,10 +1935,6 @@ function App() {
 
   function onSelectTile(idx) {
     setSelectedIndex(idx);
-  }
-
-  function onEdit() {
-    navigate("#/prompt");
   }
 
   function onExport() {
@@ -1697,9 +2001,11 @@ function App() {
           entries={entries}
           selectedIndex={selectedIndex}
           onSelectTile={onSelectTile}
-          onEdit={onEdit}
           onExport={onExport}
+          onFlipbook={() => navigate("#/flipbook")}
         />
+      ) : route === "flipbook" ? (
+        <FlipbookPage entries={entries} />
       ) : route === "export" ? (
         <ExportPage
           entries={entries}
@@ -1708,7 +2014,13 @@ function App() {
           onSelectIndex={setSelectedIndex}
         />
       ) : (
-        <NewPromptPage entry={selectedEntry} onChangeEntry={onChangeEntry} onNewPrompt={onNewPrompt} />
+        <NewPromptPage
+          entry={selectedEntry}
+          pageIndex={selectedIndex}
+          pageCount={TILE_COUNT}
+          onChangeEntry={onChangeEntry}
+          onNewPrompt={onNewPrompt}
+        />
       )}
     </PhoneShell>
   );
