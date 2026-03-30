@@ -2259,10 +2259,12 @@ body{
 }
 
 /* -------------------------------------------------------------------------
-   Mobile: full-width app (no mock phone bezel). Chain flex + min-height:0 so
-   each screen fills the dynamic viewport; safe-area for notched iOS devices.
+   Mobile / touch: strip only the *outer iPhone bezel* (thick border, outer
+   drop shadows, 52px capsule radius). Everything *inside* the shell stays:
+   screen gradient, glow, status bar, home pill, insets, and inset highlights.
    ------------------------------------------------------------------------- */
-@media (max-width:639px){
+@media (max-width:768px),
+       ((hover:none) and (pointer:coarse) and (max-width:1024px)){
   html{
     height:100%;
     -webkit-text-size-adjust:100%;
@@ -2276,6 +2278,7 @@ body{
     min-height:100vh;
     min-height:100dvh;
     min-height:-webkit-fill-available;
+    overflow-x:hidden;
     padding:
       env(safe-area-inset-top, 0)
       env(safe-area-inset-right, 0)
@@ -2289,46 +2292,54 @@ body{
     flex-direction:column;
     min-height:0;
     width:100%;
+    max-width:none;
   }
 
+  /* Outer shell only: no device border / outer float shadow / phone silhouette */
   .phone{
+    position:relative;
     width:100%;
     max-width:none;
     flex:1 1 auto;
     min-height:0;
     height:auto;
-    border:none;
-    border-radius:0;
-    box-shadow:none;
+    border:0 !important;
+    border-radius:0 !important;
+    overflow:hidden;
+    background:linear-gradient(168deg, var(--theme-bg-light) 0%, var(--theme-bg) 50%, var(--theme-bg-deep) 100%);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.22),
+      inset 0 2px 0 rgba(255,255,255,0.52),
+      inset 0 -24px 48px rgba(255,255,255,0.05);
     -webkit-tap-highlight-color:transparent;
     touch-action:manipulation;
   }
 
-  .phoneGlow{
-    opacity:0.32;
-  }
+  /* .phoneGlow, .statusBar, .homeIndicator: unchanged from base — keep visible */
 
   .phoneInner{
     flex:1;
     min-height:0;
+    height:auto;
     padding:
-      max(8px, env(safe-area-inset-top, 0px))
-      max(12px, env(safe-area-inset-right, 0px))
-      max(8px, env(safe-area-inset-bottom, 0px))
-      max(12px, env(safe-area-inset-left, 0px));
-  }
-
-  .statusBar,
-  .homeIndicator{
-    display:none !important;
+      max(20px, env(safe-area-inset-top, 0px))
+      max(20px, env(safe-area-inset-right, 0px))
+      max(22px, env(safe-area-inset-bottom, 0px))
+      max(20px, env(safe-area-inset-left, 0px));
   }
 
   .phoneContent{
     flex:1;
     min-height:0;
-    padding-top:4px;
-    padding-left:4px;
-    padding-right:4px;
+    width:100%;
+    max-width:none;
+    padding-top:8px;
+    padding-left:6px;
+    padding-right:6px;
+  }
+
+  .homeIndicator{
+    bottom:max(12px, env(safe-area-inset-bottom, 0px));
   }
 
   .textNavBar{
@@ -2348,12 +2359,8 @@ body{
   }
 
   .flipbookPage--immersive{
-    margin:0;
+    margin:0 !important;
     padding-bottom:max(4px, env(safe-area-inset-bottom, 0px));
-  }
-
-  .zineFlipShell{
-    border-radius:0;
   }
 
   .plusFab{
@@ -2361,7 +2368,6 @@ body{
     right:max(10px, env(safe-area-inset-right, 0px));
   }
 
-  /* Mood — tighter vertical grid so 8 cards + nav fit common phone heights */
   .moodHeader{
     margin-bottom:var(--space-2);
   }
@@ -2377,7 +2383,7 @@ body{
   }
 
   .moodGrid{
-    grid-template-rows:repeat(4, minmax(52px, 1fr));
+    grid-template-rows:repeat(4, minmax(50px, 1fr));
     gap:6px 8px;
     padding:2px 2px 0;
   }
@@ -2418,10 +2424,10 @@ body{
   }
 }
 
-/* Short phones (e.g. SE, landscape browser chrome) */
-@media (max-width:639px) and (max-height:720px){
+/* Short viewports: tighter mood grid (browser chrome, SE, landscape) */
+@media (max-height:720px) and (max-width:1024px){
   .moodGrid{
-    grid-template-rows:repeat(4, minmax(46px, 1fr));
+    grid-template-rows:repeat(4, minmax(44px, 1fr));
     gap:5px 6px;
   }
 
@@ -2441,7 +2447,7 @@ body{
   }
 
   .moodTitle{
-    font-size:15px;
+    font-size:clamp(14px, 3.8vw, 17px);
     margin-bottom:2px;
   }
 }
@@ -2467,6 +2473,11 @@ body{
     width:auto;
     height:auto;
     max-width:none;
+    background:transparent !important;
+    box-shadow:none !important;
+  }
+  .phoneGlow{
+    display:none !important;
   }
   .phoneInner{
     padding:0;
