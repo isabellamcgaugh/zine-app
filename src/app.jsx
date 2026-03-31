@@ -502,13 +502,6 @@ function Icons({ onDark = false } = {}) {
     </IconSvg>
   );
 
-  const PlusCircleIcon = () => (
-    <IconSvg size={40}>
-      <path d="M24 18v12" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      <path d="M18 24h12" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-    </IconSvg>
-  );
-
   const ChevronLeftIcon = () => (
     <IconSvg size={40}>
       <path d="M28 14L16 24l12 10" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -602,7 +595,6 @@ function Icons({ onDark = false } = {}) {
     PencilIcon,
     ExportIcon,
     RefreshIcon,
-    PlusCircleIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
     GridLibraryIcon,
@@ -1021,7 +1013,6 @@ function NewPromptPage({ entry, pageIndex, pageCount, onChangeEntry, onNewPrompt
     ExpandFullscreenIcon,
     PhotoPlaceholder,
     RefreshIcon,
-    PlusCircleIcon,
     GridLibraryIcon,
   } = Icons();
   const photoInputRef = useRef(null);
@@ -1169,9 +1160,6 @@ function NewPromptPage({ entry, pageIndex, pageCount, onChangeEntry, onNewPrompt
   return (
     <div className="pageStack promptPage">
       <TextNavBar links={MAIN_SECTION_NAV_LINKS} />
-      <div className="plusFab" onClick={() => onNewPrompt({ resetEntry: true })} role="button" tabIndex={0} title="New entry">
-        <PlusCircleIcon />
-      </div>
 
       <div className="chipTitle promptChipTitle">{promptMeta.title}</div>
       <p className="promptPageMeta">

@@ -505,7 +505,22 @@ body{
   margin-left:auto;
   margin-right:auto;
   margin-top:8px;
+  box-sizing:border-box;
 }
+
+/* Match chip / page gutters; loosen heavy default .frameGrid / .framePreview padding so preview is balanced */
+.promptPage .frameCameraWrap .frameGrid{
+  padding:var(--space-4);
+}
+
+.promptPage .frameCameraWrap .framePreview{
+  padding:12px var(--space-4) 14px;
+}
+
+.promptPage .frameCameraWrap .frameCorner.tl{ top:11px; left:11px; }
+.promptPage .frameCameraWrap .frameCorner.tr{ top:11px; right:11px; }
+.promptPage .frameCameraWrap .frameCorner.bl{ bottom:11px; left:11px; }
+.promptPage .frameCameraWrap .frameCorner.br{ bottom:11px; right:11px; }
 
 .promptPage .nmInlineLink{
   margin:6px auto 0;
@@ -1230,27 +1245,6 @@ body{
 
 .pillBtnIcon svg{
   display:block;
-}
-
-.plusFab{
-  position:absolute;
-  top:14px;
-  right:14px;
-  width:40px;
-  height:40px;
-  border-radius:50%;
-  background: var(--nm-surface);
-  border:none;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-  user-select:none;
-  box-shadow: var(--nm-raised-sm);
-}
-
-.plusFab:active{
-  box-shadow: var(--nm-pressed);
 }
 
 .pageStack{
@@ -2578,12 +2572,6 @@ body{
     padding-bottom:max(8px, env(safe-area-inset-bottom, 0px));
   }
 
-  .plusFab{
-    top:max(12px, env(safe-area-inset-top, 0px));
-    right:max(12px, env(safe-area-inset-right, 0px));
-    z-index:20;
-  }
-
   .moodHeader{
     margin-bottom:var(--space-2);
   }
@@ -2655,7 +2643,7 @@ body{
 
   .promptPage .frameCameraWrap{
     margin-top:6px;
-    max-height:min(88vw, 400px);
+    max-height:min(85vw, 400px);
   }
 
   .promptPage .promptTextCard{
