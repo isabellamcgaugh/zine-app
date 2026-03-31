@@ -874,6 +874,7 @@ function LibraryPage({ entries, selectedIndex, onSelectTile, onExport, onFlipboo
           {filled} of {entries.length} pages have content. Tap a tile to select it.
         </p>
       </header>
+      <div className="libraryGridScroll">
       <div className="grid2 grid2Even">
         {entries.map((e, idx) => {
           const isPhoto = e.pageMode === "photo";
@@ -927,6 +928,7 @@ function LibraryPage({ entries, selectedIndex, onSelectTile, onExport, onFlipboo
             </div>
           );
         })}
+      </div>
       </div>
 
       <div className="libraryActions">

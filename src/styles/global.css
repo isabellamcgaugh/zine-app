@@ -407,7 +407,7 @@ body{
 }
 
 .promptNewBtn{
-  margin-top:10px;
+  margin-top:auto;
   flex-shrink:0;
 }
 
@@ -419,6 +419,8 @@ body{
   flex-direction:column;
   overflow:hidden;
   width:100%;
+  row-gap:10px;
+  justify-content:flex-start;
 }
 
 /* Prompt: fit camera + controls in one viewport; textarea scrolls inside */
@@ -458,6 +460,19 @@ body{
   min-height:120px;
   max-height:none;
   margin-top:6px;
+}
+
+/* Square camera preview on prompt (mobile + desktop shell); avoids short wide letterbox */
+.promptPage .frameCameraWrap{
+  flex:0 0 auto;
+  width:100%;
+  max-width:100%;
+  aspect-ratio:1;
+  height:auto !important;
+  min-height:0;
+  margin-left:auto;
+  margin-right:auto;
+  margin-top:8px;
 }
 
 .promptPage .nmInlineLink{
@@ -702,15 +717,31 @@ body{
   min-height:0;
 }
 
-.libraryPage > .grid2.grid2Even{
+/* Scrollable tile area: grid fills height when it fits; scrolls if tiles need more — actions stay below */
+.libraryPage .libraryGridScroll{
   flex:1 1 auto;
   min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  display:flex;
+  flex-direction:column;
+}
+
+.libraryPage .libraryGridScroll .grid2.grid2Even{
+  flex:1 1 auto;
+  min-height:0;
+  grid-template-rows:repeat(3, minmax(0, 1fr));
+  gap:11px 12px;
+  padding:2px 2px 6px;
+  align-content:stretch;
 }
 
 .libraryPage .libraryActions{
-  margin-top:auto;
+  margin-top:0;
   flex-shrink:0;
 }
+
 
 .zTile{
   border-radius:var(--radius-lg);
@@ -893,6 +924,7 @@ body{
   width:100vw;
   height:100vh;
   max-height:none;
+  aspect-ratio:unset;
   border-radius:0;
   background:#000;
 }
@@ -1129,9 +1161,10 @@ body{
 
 .spacerGrow{ flex:1; }
 
-/* Daily mood picker — fits viewport without scroll; rows keep minimum tap height */
+/* Daily mood picker — flex column; grid grows; CTA pinned with safe area */
 .moodPage{
-  padding-bottom:var(--space-2);
+  padding-bottom:0;
+  min-height:0;
 }
 
 .moodHeader{
@@ -1176,9 +1209,10 @@ body{
   display:grid;
   grid-template-columns:1fr 1fr;
   grid-template-rows:repeat(4, minmax(68px, 1fr));
-  gap:var(--space-2) var(--space-3);
-  margin-top:var(--space-1);
-  padding:var(--space-2) max(var(--space-2), 10px) var(--space-2);
+  row-gap:var(--space-4);
+  column-gap:var(--space-4);
+  margin-top:var(--space-2);
+  padding:var(--space-2) max(var(--space-3), 12px) var(--space-2);
   overflow:hidden;
   align-content:stretch;
 }
@@ -1266,7 +1300,7 @@ body{
 .moodFooter{
   margin-top:auto;
   flex-shrink:0;
-  padding-bottom:2px;
+  padding-bottom:max(8px, env(safe-area-inset-bottom, 0px));
 }
 
 .moodContinueCompact{
@@ -2445,9 +2479,10 @@ body{
   }
 
   .moodGrid{
-    grid-template-rows:repeat(4, minmax(52px, 1fr));
-    gap:8px 10px;
-    padding:4px 12px 4px;
+    grid-template-rows:repeat(4, minmax(56px, 1fr));
+    row-gap:14px;
+    column-gap:14px;
+    padding:8px 14px 8px;
   }
 
   .moodCard{
@@ -2471,10 +2506,38 @@ body{
   .moodFooter{
     margin-top:auto;
     padding-top:var(--space-2);
+    padding-bottom:max(10px, env(safe-area-inset-bottom, 0px));
   }
 
   .pageStack > .grid2.grid2Even{
     gap:8px 10px;
+  }
+
+  .libraryPage .libraryGridScroll .grid2.grid2Even{
+    gap:10px 12px;
+    grid-template-rows:repeat(3, minmax(108px, 1fr));
+  }
+
+  .promptPage .promptNewBtn{
+    margin-top:auto;
+    padding-bottom:max(6px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .promptPage .promptChipTitle{
+    margin-top:4px !important;
+  }
+
+  .promptPage .promptModeRow{
+    margin-top:8px;
+  }
+
+  .promptPage .promptModeHint{
+    margin-bottom:6px;
+  }
+
+  .promptPage .frameCameraWrap{
+    margin-top:6px;
+    max-height:min(88vw, 400px);
   }
 
   .uiScreenHead{
@@ -2488,11 +2551,12 @@ body{
   }
 }
 
-/* Short viewports: tighter mood grid (browser chrome, SE, landscape) */
+/* Short viewports: keep readable row spacing (browser chrome, SE, landscape) */
 @media (max-height:720px) and (max-width:1024px){
   .moodGrid{
-    grid-template-rows:repeat(4, minmax(44px, 1fr));
-    gap:5px 6px;
+    grid-template-rows:repeat(4, minmax(48px, 1fr));
+    row-gap:10px;
+    column-gap:10px;
   }
 
   .moodCardIcon svg{
