@@ -723,39 +723,15 @@ function MoodFace({ kind, color }) {
     );
   }
   if (kind === "angry") {
-    /* Enamel pin reference: inward-curving horns, high horizontal zigzag brows (3 peaks),
-       almond eyes slanting toward the nose + pupils + under-eye arcs, thick frown */
-    const browW = sw * 1.02;
-    const eyeW = sw * 0.9;
-    const mouthW = sw * 1.06;
+    /* Compact furrow marks + scowl eyes + frown */
+    const browW = sw * 0.68;
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
         <circle cx="36" cy="42" r="22" {...faceRound} />
-        {/* Curved horns ~10 / 2 o'clock; tips angle slightly toward center */}
-        <path
-          d="M30.5 19.2 C23.5 17.5 21 12 23.2 7.6 C24.2 6 26.8 6.5 28.5 9.2 C30 11.8 30.5 16 30.5 19.2 Z
-             M41.5 19.2 C48.5 17.5 51 12 48.8 7.6 C47.8 6 45.2 6.5 43.5 9.2 C42 11.8 41.5 16 41.5 19.2 Z"
-          fill={color}
-          stroke="none"
-        />
-        {/* Three-peak “W” brows, high on the face; round joins like other glyphs */}
-        <path
-          d="M10.5 31.2 L13.2 27.2 L15.8 31.2 L18.4 27.2 L21 31.2 L23.6 27.2 L26.2 31.2 L28.6 27.6 L31 31
-             M61.5 31.2 L58.8 27.2 L56.2 31.2 L53.6 27.2 L51 31.2 L48.4 27.2 L45.8 31.2 L43.4 27.6 L41 31"
-          fill="none"
-          stroke={color}
-          strokeWidth={browW}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {/* Almond eyes: inner corners sit lower toward the bridge */}
-        <ellipse cx="26.8" cy="45" rx="6.2" ry="3.85" fill="none" stroke={color} strokeWidth={eyeW} strokeLinecap="round" transform="rotate(-22 26.8 45)" opacity="0.95" />
-        <ellipse cx="45.2" cy="45" rx="6.2" ry="3.85" fill="none" stroke={color} strokeWidth={eyeW} strokeLinecap="round" transform="rotate(22 45.2 45)" opacity="0.95" />
-        <circle cx="29.6" cy="46.2" r="3.05" fill={color} stroke="none" />
-        <circle cx="42.4" cy="46.2" r="3.05" fill={color} stroke="none" />
-        <path d="M21.2 48.2 Q26.8 51.4 33.2 49.2" fill="none" stroke={color} strokeWidth={sw * 0.78} strokeLinecap="round" opacity="0.92" />
-        <path d="M50.8 48.2 Q45.2 51.4 38.8 49.2" fill="none" stroke={color} strokeWidth={sw * 0.78} strokeLinecap="round" opacity="0.92" />
-        <path d="M19.8 56.8 Q36 46.2 52.2 56.8" fill="none" stroke={color} strokeWidth={mouthW} strokeLinecap="round" />
+        <path d="M22.5 41.8 q3.8 3.4 8.2 0 M41.3 41.8 q3.8 3.4 8.2 0" {...line} strokeWidth={sw * 0.9} />
+        <path d="M18 56.5 Q36 44 54 56.5" {...line} strokeWidth={sw * 1.08} />
+        <path d="M21.5 27.5 L30.2 33" {...line} strokeWidth={browW} />
+        <path d="M50.5 27.5 L41.8 33" {...line} strokeWidth={browW} />
       </svg>
     );
   }
