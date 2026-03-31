@@ -434,6 +434,14 @@ body{
   min-height:0;
 }
 
+/* Middle column scrolls so the camera strip never clips the round mode buttons + “New prompt” stays reachable */
+.promptPage .promptMain{
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+}
+
 .promptPage .promptChipTitle{
   margin-top:6px !important;
   margin-bottom:4px;
@@ -530,6 +538,8 @@ body{
 .promptPage .modeRow{
   flex-shrink:0;
   margin-top:8px;
+  margin-bottom:6px;
+  padding-bottom:4px;
   gap:12px;
 }
 
@@ -2641,9 +2651,19 @@ body{
     margin-top:4px !important;
   }
 
+  .promptPage .promptModeRow .promptModeBtn{
+    min-height:72px;
+    padding:12px 10px 14px;
+    gap:8px;
+  }
+
+  .promptPage .promptModeRow{
+    padding:2px 2px 10px;
+  }
+
   .promptPage .frameCameraWrap{
     margin-top:6px;
-    max-height:min(85vw, 400px);
+    max-height:min(58vw, 260px, 38vh);
   }
 
   .promptPage .promptTextCard{
