@@ -456,8 +456,17 @@ body{
   gap:12px;
 }
 
-/* Lighter elevation so a hard “shadow line” doesn’t sit under the row */
-.promptPage .promptModeBtn{
+/* Taller tiles: base .promptModeBtn uses fixed 46px height — override so icon + label can center */
+.promptPage .promptModeRow .promptModeBtn{
+  height:auto;
+  min-height:96px;
+  padding:16px 12px 18px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border-radius:var(--radius-lg);
   box-shadow:0 2px 10px rgba(22, 46, 38, 0.07);
 }
 
@@ -577,13 +586,31 @@ body{
 }
 
 .promptPage .promptModeBtnLabeled{
-  min-height:52px;
-  padding:8px 6px;
-  font-size:12px;
+  min-height:0;
+  padding:0;
+  font-size:var(--text-sm);
+  font-weight:800;
+  text-align:center;
+  line-height:1.2;
 }
 
 .promptPage .promptModeBtnIconWrap{
-  height:32px;
+  height:auto;
+  min-height:40px;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.promptPage .promptModeBtnIconWrap svg{
+  transform:scale(1.05);
+}
+
+.promptPage .promptModeAa{
+  font-size:26px;
+  line-height:1;
+  font-weight:900;
 }
 
 .promptModeBtnLabeled{
@@ -819,9 +846,22 @@ body{
   justify-content:flex-start;
   position:relative;
   box-shadow: var(--nm-raised-sm);
-  padding:40px 10px 34px;
-  gap:6px;
+  padding:38px 10px 32px;
+  gap:0;
   box-sizing:border-box;
+}
+
+/* Main tile content: fills space between pill + footer label; centers empty icon + hint */
+.zTileBody{
+  flex:1 1 auto;
+  min-height:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-align:center;
 }
 
 .zTileSelected{
@@ -1583,8 +1623,10 @@ body{
   bottom:auto;
   flex:1 1 auto;
   min-height:52px;
-  width:auto;
-  margin:4px 0 0;
+  width:100%;
+  max-width:100%;
+  align-self:stretch;
+  margin:0;
   display:flex;
   flex-direction:column;
   gap:4px;
@@ -1700,24 +1742,26 @@ body{
   left:auto;
   right:auto;
   bottom:auto;
-  margin:4px 8px 0;
-  padding:0 4px;
+  margin:0;
+  padding:0 6px;
   text-align:center;
   font-size:11px;
   font-weight:750;
   line-height:1.35;
   color: rgba(0,0,0,0.42);
   flex-shrink:0;
+  max-width:100%;
 }
 
 .zTile .iconWrap{
   align-self:center;
-  margin:8px auto 4px;
+  margin:0;
+  flex-shrink:0;
 }
 
 .zTileTextEmptyMark{
   align-self:center;
-  margin-top:10px;
+  margin:0;
   font-size:clamp(28px, 7vw, 42px);
   font-weight:900;
   letter-spacing:-0.04em;
@@ -1930,8 +1974,13 @@ body{
   transform: scale(0.98);
 }
 
-/* Full zine for Cmd/Ctrl+P — hidden on screen */
+/* Full zine for Cmd/Ctrl+P — hidden on screen (legacy single-page stack unused when booklet prints) */
 .exportPrintAllSheets{
+  display:none;
+}
+
+/* Saddle-stitch booklet spreads — only visible when printing */
+.exportPrintBooklet{
   display:none;
 }
 
@@ -2656,9 +2705,9 @@ body{
 }
 
 @media print{
-  /* Match fixed export paper (A5) so one logical zine page ≈ one printed sheet */
+  /* Booklet: two A5 portrait pages side by side on A4 landscape */
   @page{
-    size:A5 portrait;
+    size:A4 landscape;
     margin:10mm;
   }
 
@@ -2722,20 +2771,68 @@ body{
     display:none !important;
   }
   .exportPrintAllSheets{
+    display:none !important;
+  }
+  .exportPrintBooklet{
     display:block !important;
   }
-  /* One export page per printed sheet: keep each block unbroken, force page between blocks */
-  .exportPrintStackItem{
-    margin:0 0 12px;
+  .bookletPrintNote{
+    display:block !important;
+    font-size:9pt;
+    line-height:1.38;
+    color:rgba(0,0,0,0.78);
+    margin:0 0 5mm;
+    padding:0 2mm 1mm;
     break-inside:avoid;
-    page-break-inside:avoid;
+    page-break-after:avoid;
+  }
+  .bookletSpread{
+    display:flex !important;
+    flex-direction:row;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    gap:3mm;
+    margin:0;
     page-break-after:always;
     break-after:page;
+    break-inside:avoid;
   }
-  .exportPrintStackItem:last-child{
+  .bookletSpread:last-child{
     page-break-after:auto;
     break-after:auto;
-    margin-bottom:0;
+  }
+  .bookletHalf{
+    flex:1 1 50%;
+    width:50%;
+    max-width:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-sizing:border-box;
+    padding:0 1.5mm;
+  }
+  .exportBookletHalfStage{
+    width:100%;
+    max-width:100%;
+    margin:0 auto;
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  .exportBookletHalfStage .zinePaperSheet{
+    width:100% !important;
+    max-width:136mm;
+    height:auto !important;
+    max-height:188mm;
+    margin-left:auto;
+    margin-right:auto;
+    aspect-ratio:148 / 210;
+    box-shadow:none;
+    border:1px solid rgba(0,0,0,0.08);
+  }
+  /* Legacy one-page-per-sheet stack (hidden) */
+  .exportPrintStackItem{
+    display:none !important;
   }
   .exportDateStatic{
     font-size:15px;

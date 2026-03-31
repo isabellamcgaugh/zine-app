@@ -1,4 +1,4 @@
-const { useEffect, useLayoutEffect, useRef, useState } = React;
+const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React;
 
 const STORAGE_KEY = "zine-o-matic-entries-v2";
 const LEGACY_STORAGE_KEY = "zine-o-matic-entries-v1";
@@ -617,132 +617,165 @@ function Icons({ onDark = false } = {}) {
   };
 }
 
-/** Simple doodle faces — chunky strokes to match the soft glass UI. */
+/**
+ * Mood glyphs — soft fills + rounded strokes to match glass / neumorphic UI.
+ * Each mood uses its theme `color` (--icon) for stroke + tinted fill so it always matches the card.
+ */
 function MoodFace({ kind, color }) {
   const vb = "0 0 72 72";
-  const sw = 3.2;
-  const face = { fill: `${color}30`, stroke: color, strokeWidth: sw, strokeLinecap: "round", strokeLinejoin: "round" };
+  const sw = 2.85;
+  const fillSoft = `${color}28`;
+  const fillMid = `${color}3a`;
+  const faceRound = {
+    fill: fillSoft,
+    stroke: color,
+    strokeWidth: sw,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  };
   const line = { fill: "none", stroke: color, strokeWidth: sw, strokeLinecap: "round", strokeLinejoin: "round" };
 
   if (kind === "calm") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        <circle cx="36" cy="40" r="24" {...face} />
-        <path d="M26 38h8M38 38h8" {...line} />
-        <path d="M28 50c4 5 12 5 16 0" {...line} />
-        <path d="M36 12v8" {...line} opacity="0.45" />
+        {/* Still water ring */}
+        <ellipse cx="36" cy="42" rx="24" ry="23" {...faceRound} />
+        <path d="M24 14q12 6 24 0" {...line} opacity="0.55" strokeWidth={sw * 0.85} />
+        <path d="M25 37h7M40 37h7" {...line} />
+        <path d="M28 49q8 6 16 0" {...line} />
       </svg>
     );
   }
   if (kind === "happy") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        <circle cx="36" cy="40" r="24" {...face} />
-        <circle cx="27" cy="36" r="3.5" fill={color} stroke="none" />
-        <circle cx="45" cy="36" r="3.5" fill={color} stroke="none" />
-        <path d="M26 48c4 8 16 8 20 0" {...line} />
-        <path d="M18 22l6 4M48 22l-6 4" {...line} opacity="0.6" />
+        <circle cx="36" cy="41" r="23" {...faceRound} />
+        <circle cx="22" cy="46" r="3.2" fill={`${color}45`} stroke="none" />
+        <circle cx="50" cy="46" r="3.2" fill={`${color}45`} stroke="none" />
+        <path d="M25 36q3-5 8-1" {...line} strokeWidth={sw * 0.92} />
+        <path d="M39 36q3-5 8-1" {...line} strokeWidth={sw * 0.92} />
+        <path d="M26 50q10 14 20 0" {...line} strokeWidth={sw * 1.02} />
       </svg>
     );
   }
   if (kind === "energized") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        {/* Buzz / charge: short rays above the head — not on the eyes */}
         <path
-          d="M36 9v6M26 12l5 5M46 12l-5 5M22 20l6 2M50 20l-6 2"
+          d="M36 8v5M24 11l4 4M48 11l-4 4M18 18l5 2M54 18l-5 2"
           fill="none"
           stroke={color}
-          strokeWidth={sw * 0.9}
+          strokeWidth={sw * 0.88}
           strokeLinecap="round"
-          opacity="0.9"
+          opacity="0.95"
         />
-        <circle cx="36" cy="42" r="23" {...face} />
-        {/* Alert, awake eyes */}
-        <circle cx="27" cy="40" r="4" fill={color} stroke="none" />
-        <circle cx="45" cy="40" r="4" fill={color} stroke="none" />
-        <path d="M22 32c4-3 10-2 12 2M40 32c4-3 10-2 12 2" {...line} strokeWidth={sw * 0.95} />
-        {/* Big engaged smile */}
-        <path d="M24 50c4 9 20 9 24 0" {...line} />
+        <circle cx="36" cy="43" r="22" {...faceRound} />
+        <circle cx="27" cy="40" r="4.2" fill={color} stroke="none" />
+        <circle cx="45" cy="40" r="4.2" fill={color} stroke="none" />
+        <path d="M26 51q10 11 20 0" {...line} strokeWidth={sw * 1.05} />
       </svg>
     );
   }
   if (kind === "creative") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        {/* Lightbulb + face: bulb stack ends ~y31, face starts y30 — readable “idea” metaphor */}
-        <ellipse cx="36" cy="17" rx="13" ry="12" fill={`${color}26`} stroke={color} strokeWidth={sw * 0.85} />
-        <rect x="31" y="27" width="10" height="5" rx="1.5" fill={`${color}30`} stroke={color} strokeWidth={sw * 0.75} />
-        <circle cx="36" cy="51" r="19" {...face} />
-        <circle cx="28.5" cy="50" r="3" fill={color} stroke="none" />
-        <circle cx="43.5" cy="50" r="3" fill={color} stroke="none" />
-        <path d="M28 59c4 4 12 4 16 0" {...line} />
+        <circle cx="36" cy="42" r="22" {...faceRound} />
+        <g fill={color}>
+          <circle cx="51" cy="17" r="2.2" opacity="0.9" />
+          <circle cx="46" cy="22" r="1.6" opacity="0.75" />
+          <circle cx="56" cy="22" r="1.5" opacity="0.75" />
+          <circle cx="15" cy="20" r="1.8" opacity="0.65" />
+          <circle cx="19" cy="25" r="1.3" opacity="0.55" />
+        </g>
+        <circle cx="27" cy="39" r="3.2" fill={color} stroke="none" />
+        <circle cx="45" cy="39" r="3.2" fill={color} stroke="none" />
+        <path d="M28 50q8 6 16-1" {...line} />
       </svg>
     );
   }
   if (kind === "tender") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        <circle cx="36" cy="40" r="24" {...face} />
-        <path
-          d="M24 34c0-4 6-4 6 0 0-4 6-4 6 0M36 34c0-4 6-4 6 0 0-4 6-4 6 0"
-          fill={color}
-          stroke="none"
-          opacity="0.85"
-        />
-        <path d="M28 50c3 5 13 5 16 0" {...line} />
-        <ellipse cx="36" cy="18" rx="10" ry="5" fill={`${color}40`} stroke="none" />
+        <g transform="translate(21.6 2) scale(1.15)">
+          <path
+            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+            fill={fillMid}
+            stroke={color}
+            strokeWidth={sw * 0.65 / 1.15}
+            strokeLinejoin="round"
+          />
+        </g>
+        <circle cx="36" cy="47" r="19" {...faceRound} />
+        <path d="M27 45q4.5 3.5 9 0" {...line} strokeWidth={sw * 0.82} fill="none" />
+        <path d="M36 45q4.5 3.5 9 0" {...line} strokeWidth={sw * 0.82} fill="none" />
+        <path d="M28 56q8 5 16 0" {...line} />
       </svg>
     );
   }
   if (kind === "low") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        <path
-          d="M16 46c4-18 40-18 44 0v8H16v-8z"
-          fill={`${color}32`}
-          stroke={color}
-          strokeWidth={sw}
-          strokeLinejoin="round"
-        />
-        <circle cx="30" cy="40" r="2.8" fill={color} stroke="none" />
-        <circle cx="42" cy="40" r="2.8" fill={color} stroke="none" />
-        <path d="M32 48h8" {...line} />
-        <path d="M22 26h6M34 24h6M46 26h6" {...line} opacity="0.45" strokeWidth={2} />
+        <circle cx="36" cy="42" r="22" {...faceRound} />
+        <circle cx="27" cy="44" r="3.1" fill={color} stroke="none" />
+        <circle cx="45" cy="44" r="3.1" fill={color} stroke="none" />
+        <path d="M26 52 Q36 45.5 46 52" {...line} strokeWidth={sw * 0.98} />
       </svg>
     );
   }
   if (kind === "angry") {
+    /* Enamel pin reference: inward-curving horns, high horizontal zigzag brows (3 peaks),
+       almond eyes slanting toward the nose + pupils + under-eye arcs, thick frown */
+    const browW = sw * 1.02;
+    const eyeW = sw * 0.9;
+    const mouthW = sw * 1.06;
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        <circle cx="36" cy="40" r="24" fill={`${color}38`} stroke={color} strokeWidth={sw} />
-        <path d="M24 32l8 4M48 32l-8 4" {...line} />
-        <circle cx="28" cy="40" r="3" fill={color} stroke="none" />
-        <circle cx="44" cy="40" r="3" fill={color} stroke="none" />
-        <path d="M28 50l16-6" {...line} />
-        <path d="M20 18c2 6 6 8 8 4M44 18c-2 6-6 8-8 4" {...line} />
+        <circle cx="36" cy="42" r="22" {...faceRound} />
+        {/* Curved horns ~10 / 2 o'clock; tips angle slightly toward center */}
+        <path
+          d="M30.5 19.2 C23.5 17.5 21 12 23.2 7.6 C24.2 6 26.8 6.5 28.5 9.2 C30 11.8 30.5 16 30.5 19.2 Z
+             M41.5 19.2 C48.5 17.5 51 12 48.8 7.6 C47.8 6 45.2 6.5 43.5 9.2 C42 11.8 41.5 16 41.5 19.2 Z"
+          fill={color}
+          stroke="none"
+        />
+        {/* Three-peak “W” brows, high on the face; round joins like other glyphs */}
+        <path
+          d="M10.5 31.2 L13.2 27.2 L15.8 31.2 L18.4 27.2 L21 31.2 L23.6 27.2 L26.2 31.2 L28.6 27.6 L31 31
+             M61.5 31.2 L58.8 27.2 L56.2 31.2 L53.6 27.2 L51 31.2 L48.4 27.2 L45.8 31.2 L43.4 27.6 L41 31"
+          fill="none"
+          stroke={color}
+          strokeWidth={browW}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* Almond eyes: inner corners sit lower toward the bridge */}
+        <ellipse cx="26.8" cy="45" rx="6.2" ry="3.85" fill="none" stroke={color} strokeWidth={eyeW} strokeLinecap="round" transform="rotate(-22 26.8 45)" opacity="0.95" />
+        <ellipse cx="45.2" cy="45" rx="6.2" ry="3.85" fill="none" stroke={color} strokeWidth={eyeW} strokeLinecap="round" transform="rotate(22 45.2 45)" opacity="0.95" />
+        <circle cx="29.6" cy="46.2" r="3.05" fill={color} stroke="none" />
+        <circle cx="42.4" cy="46.2" r="3.05" fill={color} stroke="none" />
+        <path d="M21.2 48.2 Q26.8 51.4 33.2 49.2" fill="none" stroke={color} strokeWidth={sw * 0.78} strokeLinecap="round" opacity="0.92" />
+        <path d="M50.8 48.2 Q45.2 51.4 38.8 49.2" fill="none" stroke={color} strokeWidth={sw * 0.78} strokeLinecap="round" opacity="0.92" />
+        <path d="M19.8 56.8 Q36 46.2 52.2 56.8" fill="none" stroke={color} strokeWidth={mouthW} strokeLinecap="round" />
       </svg>
     );
   }
   if (kind === "growth") {
     return (
       <svg viewBox={vb} width="56" height="56" aria-hidden>
-        {/* Soil / base */}
-        <ellipse cx="36" cy="54" rx="18" ry="10" fill={`${color}22`} stroke={color} strokeWidth={sw * 0.9} />
-        {/* Stem */}
-        <path d="M36 48V28" stroke={color} strokeWidth={sw} strokeLinecap="round" fill="none" />
-        {/* Two leaves at top — young plant */}
+        {/* Sprout: stem from crown + two oval leaves (notebook sketch) */}
         <path
-          d="M36 30c-10 2-14 12-6 18 2-6 4-10 6-12M36 30c10 2 14 12 6 18-2-6-4-10-6-12"
+          d="M36 27V14"
           fill="none"
           stroke={color}
-          strokeWidth={sw * 0.9}
+          strokeWidth={sw * 0.85}
           strokeLinecap="round"
-          strokeLinejoin="round"
         />
-        <circle cx="29" cy="48" r="2.5" fill={color} stroke="none" opacity="0.65" />
-        <circle cx="43" cy="48" r="2.5" fill={color} stroke="none" opacity="0.65" />
-        <path d="M29 54c4 3 10 3 14 0" {...line} strokeWidth={sw * 0.85} />
+        <ellipse cx="29.5" cy="12" rx="5.5" ry="3.4" transform="rotate(-40 29.5 12)" fill={fillMid} stroke={color} strokeWidth={sw * 0.68} />
+        <ellipse cx="42.5" cy="12" rx="5.5" ry="3.4" transform="rotate(40 42.5 12)" fill={fillMid} stroke={color} strokeWidth={sw * 0.68} />
+        <circle cx="36" cy="46" r="19" {...faceRound} />
+        {/* Happy upturned eye arcs */}
+        <path d="M26 45q3-3.5 6 0M40 45q3-3.5 6 0" {...line} strokeWidth={sw * 0.85} fill="none" />
+        <path d="M27 54q9 7 18 0" {...line} strokeWidth={sw * 0.92} />
       </svg>
     );
   }
@@ -894,36 +927,38 @@ function LibraryPage({ entries, selectedIndex, onSelectTile, onExport, onFlipboo
               tabIndex={0}
             >
               <div className="zTileKindPill">{isPhoto ? "Photo" : "Text"}</div>
-              {isPhoto && !hasPhoto ? (
-                <div className="iconWrap" style={{ opacity: 0.85 }}>
-                  <PhotoPlaceholder />
-                </div>
-              ) : null}
-              {isText && !hasText ? <div className="zTileTextEmptyMark">Aa</div> : null}
-              {hasPhoto ? (
-                <div className="zTileSheetMini" aria-hidden>
-                  <p className="zTileSheetMiniDate">{dateLine}</p>
-                  <div className="zTileSheetMiniPhoto">
-                    <img src={e.photoDataUrl} alt="" />
+              <div className="zTileBody">
+                {isPhoto && !hasPhoto ? (
+                  <div className="iconWrap" style={{ opacity: 0.85 }}>
+                    <PhotoPlaceholder />
                   </div>
-                  <p className="zTileSheetMiniPrompt">{promptMeta.title}</p>
-                </div>
-              ) : null}
-              {hasText ? (
-                <div className="zTileSheetMini zTileSheetMini--text" aria-hidden>
-                  <p className="zTileSheetMiniDate">{dateLine}</p>
-                  <div className="zTileSheetMiniTextBlock">
-                    <div className="zTileSheetMiniTitle">{promptMeta.title}</div>
-                    <div className="zTileSheetMiniBody">{e.sentence.trim()}</div>
+                ) : null}
+                {isText && !hasText ? <div className="zTileTextEmptyMark">Aa</div> : null}
+                {hasPhoto ? (
+                  <div className="zTileSheetMini" aria-hidden>
+                    <p className="zTileSheetMiniDate">{dateLine}</p>
+                    <div className="zTileSheetMiniPhoto">
+                      <img src={e.photoDataUrl} alt="" />
+                    </div>
+                    <p className="zTileSheetMiniPrompt">{promptMeta.title}</p>
                   </div>
-                </div>
-              ) : null}
-              {!hasPhoto && !hasText && isText ? (
-                <div className="zTileEmptyHint">Write your answer</div>
-              ) : null}
-              {!hasPhoto && !hasText && isPhoto ? (
-                <div className="zTileEmptyHint">Add a photo</div>
-              ) : null}
+                ) : null}
+                {hasText ? (
+                  <div className="zTileSheetMini zTileSheetMini--text" aria-hidden>
+                    <p className="zTileSheetMiniDate">{dateLine}</p>
+                    <div className="zTileSheetMiniTextBlock">
+                      <div className="zTileSheetMiniTitle">{promptMeta.title}</div>
+                      <div className="zTileSheetMiniBody">{e.sentence.trim()}</div>
+                    </div>
+                  </div>
+                ) : null}
+                {!hasPhoto && !hasText && isText ? (
+                  <div className="zTileEmptyHint">Write your answer</div>
+                ) : null}
+                {!hasPhoto && !hasText && isPhoto ? (
+                  <div className="zTileEmptyHint">Add a photo</div>
+                ) : null}
+              </div>
               <div className="zTileLabel">pg #{idx + 1}</div>
             </div>
           );
@@ -1670,6 +1705,43 @@ function FlipbookPage({ entries }) {
   );
 }
 
+/** Pad zine pages to a multiple of 4 for saddle-stitch booklets (blank pages at end). */
+function padEntriesForBooklet(entries) {
+  const target = Math.max(4, Math.ceil(entries.length / 4) * 4);
+  const out = entries.map((e) => ({ ...e }));
+  const blankBase = {
+    pageMode: "text",
+    sentence: "",
+    photoDataUrl: null,
+    promptIndex: 0,
+    zineDate: "",
+  };
+  let i = 0;
+  while (out.length < target) {
+    out.push({ ...blankBase, id: `booklet-blank-${i++}` });
+  }
+  return out;
+}
+
+/**
+ * Saddle-stitch imposition (reading order 1…n after fold).
+ * Each pair is one side of physical paper: { left, right } are 0-based indices into padded entries.
+ * Order: for each sheet, recto then verso (print double-sided, flip on short edge).
+ */
+function bookletImpositionPairs(pageCount) {
+  const n = pageCount;
+  if (n < 4 || n % 4 !== 0) return [];
+  const pairs = [];
+  const sheets = n / 4;
+  for (let s = 0; s < sheets; s++) {
+    pairs.push(
+      { left: n - 2 * s - 1, right: 2 * s },
+      { left: 2 * s + 1, right: n - 2 * s - 2 }
+    );
+  }
+  return pairs;
+}
+
 /** One export/print sheet — reused for on-screen preview, PNG, and full-zine print. */
 function ExportZineSheetBlock({ entry, paper, sheetInset, previewFit, wrapperClassName }) {
   return (
@@ -1712,6 +1784,12 @@ function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
   const paper = EXPORT_PAPER;
   const dateLine = (entry.zineDate && entry.zineDate.trim()) || formatDefaultZineDate();
 
+  const bookletPaddedEntries = useMemo(() => padEntriesForBooklet(entries), [entries]);
+  const bookletPairs = useMemo(
+    () => bookletImpositionPairs(bookletPaddedEntries.length),
+    [bookletPaddedEntries.length]
+  );
+
   useEffect(() => {
     saveExportPrefs({ sheetInset, previewFit });
   }, [sheetInset, previewFit]);
@@ -1742,7 +1820,9 @@ function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
       <header className="uiScreenHead uiScreenHeadTight">
         <h2 className="uiScreenTitle">Print &amp; export</h2>
         <p className="uiScreenMeta exportHeadMeta">
-          Adjust margins and photo fit. PNG matches the preview below; <strong>Print</strong> outputs the full zine (A5).
+          Adjust margins and photo fit. PNG matches the preview below. <strong>Print</strong> uses a saddle-stitch booklet layout
+          (two A5 pages per sheet, A4 landscape — fold and staple in the middle; use duplex &amp; flip on short edge if
+          available).
         </p>
       </header>
 
@@ -1784,6 +1864,7 @@ function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
         wrapperClassName="zinePaperStage exportPrintTarget exportPrintTargetScreen"
       />
 
+      {/* Legacy one-page-per-sheet print stack — superseded by booklet block when @media print */}
       <div className="exportPrintAllSheets" aria-hidden="true">
         {entries.map((e, i) => (
           <ExportZineSheetBlock
@@ -1794,6 +1875,38 @@ function ExportPage({ entries, selectedIndex, onGoLibrary, onSelectIndex }) {
             previewFit={previewFit}
             wrapperClassName="zinePaperStage exportPrintStackItem"
           />
+        ))}
+      </div>
+
+      <div className="exportPrintBooklet" aria-hidden="true">
+        <p className="bookletPrintNote">
+          Booklet printing: use <strong>A4 landscape</strong>, two-sided if possible, <strong>flip on short edge</strong>.
+          Collate in page order, fold each sheet in half, stack, then saddle-staple along the fold.
+        </p>
+        {bookletPairs.map((pair, i) => (
+          <div
+            key={`booklet-${pair.left}-${pair.right}-${i}`}
+            className="bookletSpread exportPrintBookletSurface"
+          >
+            <div className="bookletHalf">
+              <ExportZineSheetBlock
+                entry={bookletPaddedEntries[pair.left]}
+                paper={paper}
+                sheetInset={sheetInset}
+                previewFit={previewFit}
+                wrapperClassName="zinePaperStage exportBookletHalfStage"
+              />
+            </div>
+            <div className="bookletHalf">
+              <ExportZineSheetBlock
+                entry={bookletPaddedEntries[pair.right]}
+                paper={paper}
+                sheetInset={sheetInset}
+                previewFit={previewFit}
+                wrapperClassName="zinePaperStage exportBookletHalfStage"
+              />
+            </div>
+          </div>
         ))}
       </div>
 
