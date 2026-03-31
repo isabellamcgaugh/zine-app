@@ -1197,7 +1197,7 @@ function NewPromptPage({ entry, pageIndex, pageCount, onChangeEntry, onNewPrompt
           : "This page saves writing only. Switch to Photo for the camera."}
       </p>
 
-      <div className="promptMain">
+      <div className={"promptMain" + (pageMode === "text" ? " promptMain--text" : "")}>
       {pageMode === "photo" ? (
         <>
           <div className="frame frameCameraWrap" ref={frameContainerRef}>
