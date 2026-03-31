@@ -1199,43 +1199,45 @@ function NewPromptPage({ entry, pageIndex, pageCount, onChangeEntry, onNewPrompt
       <div className={"promptMain" + (pageMode === "text" ? " promptMain--text" : "")}>
       {pageMode === "photo" ? (
         <>
-          <div className="frame frameCameraWrap" ref={frameContainerRef}>
-            <div className="frameGrid frameOverlay">
-              <div className="frameCorner tl" />
-              <div className="frameCorner tr" />
-              <div className="frameCorner bl" />
-              <div className="frameCorner br" />
-              <div className="frameCross" />
+          <div className="promptPhotoStage">
+            <div className="frame frameCameraWrap" ref={frameContainerRef}>
+              <div className="frameGrid frameOverlay">
+                <div className="frameCorner tl" />
+                <div className="frameCorner tr" />
+                <div className="frameCorner bl" />
+                <div className="frameCorner br" />
+                <div className="frameCross" />
+              </div>
+
+              <div className="framePreview frameCameraInner">
+                {entry.photoDataUrl ? (
+                  <img src={entry.photoDataUrl} alt="Captured" />
+                ) : (
+                  <>
+                    <video ref={videoRef} className="cameraVideo" playsInline muted autoPlay />
+                    {streamError ? (
+                      <div className="cameraFallback">
+                        <PhotoPlaceholder />
+                        <p className="cameraFallbackText">{streamError}</p>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </div>
 
-            <div className="framePreview frameCameraInner">
-              {entry.photoDataUrl ? (
-                <img src={entry.photoDataUrl} alt="Captured" />
-              ) : (
-                <>
-                  <video ref={videoRef} className="cameraVideo" playsInline muted autoPlay />
-                  {streamError ? (
-                    <div className="cameraFallback">
-                      <PhotoPlaceholder />
-                      <p className="cameraFallbackText">{streamError}</p>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
+            {entry.photoDataUrl ? (
+              <button
+                type="button"
+                className="nmInlineLink"
+                onClick={() => onChangeEntry({ ...entry, pageMode: "photo", photoDataUrl: null })}
+              >
+                Retake with camera
+              </button>
+            ) : null}
           </div>
 
-          {entry.photoDataUrl ? (
-        <button
-          type="button"
-          className="nmInlineLink"
-          onClick={() => onChangeEntry({ ...entry, pageMode: "photo", photoDataUrl: null })}
-        >
-          Retake with camera
-        </button>
-          ) : null}
-
-          <div className="modeRow">
+          <div className="modeRow promptCameraModeRow">
             <button
               type="button"
               className="modeBtn modeBtnRound"
